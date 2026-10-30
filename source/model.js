@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 export function createModel(){
-const model=new THREE.Group();model.name="GMF 压力诱导发泡线 V0.2";
+const model=new THREE.Group();model.name="GMF 压力诱导发泡线 V0.3";
 const palette={steel:0xb5c4c8,dark:0x34474e,green:0x2d9980,pipe:0x80baa8,red:0xbf604d,blue:0x376879,black:0x1c292e,light:0xe0e6e1};
 const parts=[],systems=[['釜体与操作平台','01'],['物料收集系统','02'],['物料输送系统','03'],['颗粒后处理','04'],['筛分出料系统','05']];
 function part(id,name,sys,fn,anchor,offset,evidence='宣传页第3页 · 功能部件示意') {const g=new THREE.Group();g.name=name;g.userData={id,name,system:systems[sys][0],function:fn,evidence,geometry:'宣传资料重建示意，非尺寸图'};model.add(g);const p={id,name,sys,fn,g,base:new THREE.Vector3(),anchor:new THREE.Vector3(...anchor),offset:new THREE.Vector3(...offset),evidence};parts.push(p);return p;}
@@ -43,24 +43,38 @@ const feedPorts=[[-4.75,lidEntryY,.35],[-2.6,lidEntryY,.35]];
 tube(feed,[feedSource,feedJunction,...[feedPorts[0]].map(p=>[p[0],9.65,p[2]]),feedPorts[0]],.105,'green');
 tube(feed,[[-4.75,9.65,.35],[-2.6,9.65,.35],feedPorts[1]],.105,'green');
 for(const [x,y,z] of feedPorts){cyl(feed,[x,y+.035,z],.145,.09,'steel');}
-const release=part('release','釜底至收集罐顶部出料管道',0,'两台高压釜分别由底部出料，通过两条独立管道接入物料收集罐的顶部。',[-1.5,3.9,.3],[0,0,2.5],'用户确认 · 两釜底部分别接收集罐顶部；连接走向示意');
+const release=part('release','釜底至收集罐顶部出料管道',0,'两台高压釜分别由底部出料，通过两条独立管道接入物料收集罐的顶部。',[-4.025,3.9,.3],[0,0,2.5],'用户确认 · 两釜底部分别接收集罐顶部；连接走向示意');
+const collectorX=-4.025;
 const collectorRoof=3.33+.25*Math.sqrt(1-.3*.3-.3*.3);
 const releaseRoutes=[
- [[-5.1,4.05,0],[-5.1,3.95,0],[-5.1,3.95,.3],[.2,3.95,.3],[.2,collectorRoof,.3]],
- [[-2.95,4.05,0],[-2.95,3.8,0],[-2.95,3.8,-.3],[.8,3.8,-.3],[.8,collectorRoof,-.3]]
+ [[-5.1,4.05,0],[-5.1,3.95,0],[-5.1,3.95,.3],[collectorX-.3,3.95,.3],[collectorX-.3,collectorRoof,.3]],
+ [[-2.95,4.05,0],[-2.95,3.8,0],[-2.95,3.8,-.3],[collectorX+.3,3.8,-.3],[collectorX+.3,collectorRoof,-.3]]
 ];
 for(const route of releaseRoutes){tube(release,route,.095,'steel');const [x,y,z]=route.at(-1);cyl(release,[x,y+.045,z],.135,.13,'steel');}
 const collect=part('collector','物料收集罐',1,'接收发泡后的颗粒，衔接后续输送和处理。',[.5,2.6,0],[0,.5,3],'宣传页第3页 · 物料收集罐');cyl(collect,[.5,2.7,0],1,1.25,'steel');mesh(collect,new THREE.ConeGeometry(1,1.3,48),[.5,1.45,0],'steel',[Math.PI,0,0]);ball(collect,[.5,3.33,0],1,'steel',[1,.25,1]);
 const legs=part('collector-support','收集罐支架',1,'支承收集罐，保持下方出料空间。',[.5,.6,0],[0,0,3.4],'图片参考 · 几何示意');for(const x of [-.3,1.3])for(const z of [-.7,.7])bar(legs,[x,.08,z],[x,2.2,z],.045,'dark');
 const outlet=part('collector-outlet','收集罐底部出料口',1,'颗粒从收集罐锥底向下落料，由正下方的输送机接料斗承接。',[.5,.65,0],[0,-.2,4],'用户确认 · 罐底落料、输送装置在正下方承接');cyl(outlet,[.5,.7,0],.16,.4,'dark');box(outlet,[.5,.47,0],[.5,.13,.42],'steel');
+// Collector, support and outlet all move as one assembly beneath the two kettles.
+for(const p of [collect,legs,outlet]){p.base.x=collectorX-.5;p.g.position.copy(p.base);p.g.userData.assembledOffset=p.base.toArray();}
+collect.fn='位于两台高压釜下方，顶部接釜底物料管和通往消音器的排气管，锥底向下出料。';collect.g.userData.function=collect.fn;collect.evidence='用户确认 · 收集罐置于高压釜下方；参考装配体1';collect.g.userData.evidence=collect.evidence;
+const muffler=part('muffler','消音器（消声器）',1,'接收物料收集罐上端管道的气流，表达排气降噪功能；内部结构和排放口形式待确认。',[-7.5,6,-2.8],[-2,1,-2],'用户确认 · 收集罐上端接消音器；外观参考装配体1，尺寸示意');
+cyl(muffler,[-7.5,6,-2.8],.60,3.6,'steel');ball(muffler,[-7.5,7.8,-2.8],.60,'steel',[1,.2,1]);
+// Open truncated cone: bottom nozzle and vessel neck share the exact centerline.
+mesh(muffler,new THREE.CylinderGeometry(.60,.16,.8,40,1,true),[-7.5,3.8,-2.8],'steel');cyl(muffler,[-7.5,3.3,-2.8],.16,.2,'steel');
+mesh(muffler,new THREE.CylinderGeometry(.13,.13,.4,32,1,true),[-7.5,8.1,-2.8],'steel');
+for(const x of [-7.95,-7.05])for(const z of [-3.25,-2.35]){bar(muffler,[x,.08,z],[x,4.6,z],.045,'dark');box(muffler,[x,.045,z],[.28,.09,.28],'steel');}
+const vent=part('collector-vent','收集罐上端至消音器连接管',1,'从收集罐上部独立接口引出，经平台后方连接到消音器下端接口；与两条釜底物料管分开。',[-5.9,3.7,-2.8],[-1,0,-3],'用户确认 · 上端管道接消音器；具体管径、阀组与接口待确认');
+const ventPort=[collectorX,3.33+.25*Math.sqrt(1-.65*.65),-.65],mufflerInlet=[-7.5,3.2,-2.8];
+const ventRoute=[ventPort,[collectorX,3.75,-.65],[collectorX,3.75,-2.8],[collectorX,3.05,-2.8],[-7.5,3.05,-2.8],mufflerInlet];
+tube(vent,ventRoute,.11,'red');for(const [x,y,z] of [ventPort,mufflerInlet])cyl(vent,[x,y+.025,z],.16,.08,'steel');
 const conveyor=part('conveyor','倾斜物料输送装置',2,'水平接料段位于收集罐底部正下方，接住下落颗粒，再经倾斜输送段送入后处理装置的顶部进料口。',[2.8,1.4,0],[1.5,0,3],'用户确认 · 从收集罐最下端承接物料');
-const catchUpper=[.5,.37,0],catchLower=[.5,.24,0];hopper(conveyor,catchUpper,catchLower,[.75,.85],[.65,.75]);
-box(conveyor,[.525,.18,0],[1.35,.10,.85],'dark');
-const ca=[1.2,.18,0],cb=[4.9,2.99,0],length=Math.hypot(cb[0]-ca[0],cb[1]-ca[1]),slope=Math.atan2(cb[1]-ca[1],cb[0]-ca[0]);
-for(const z of [-.45,.45]){bar(conveyor,[-.15,.18,z],[1.2,.18,z],.06,'steel');bar(conveyor,[ca[0],ca[1],z],[cb[0],cb[1],z],.06,'steel');}
+const catchUpper=[collectorX,.37,0],catchLower=[collectorX,.24,0];hopper(conveyor,catchUpper,catchLower,[.75,.85],[.65,.75]);
+box(conveyor,[collectorX+.025,.18,0],[1.35,.10,.85],'dark');
+const ca=[collectorX+.7,.18,0],cb=[4.9,2.99,0],length=Math.hypot(cb[0]-ca[0],cb[1]-ca[1]),slope=Math.atan2(cb[1]-ca[1],cb[0]-ca[0]);
+for(const z of [-.45,.45]){bar(conveyor,[collectorX-.65,.18,z],[ca[0],.18,z],.06,'steel');bar(conveyor,[ca[0],ca[1],z],[cb[0],cb[1],z],.06,'steel');}
 const belt=box(conveyor,[(ca[0]+cb[0])/2,(ca[1]+cb[1])/2,0],[length,.10,.85],'dark');belt.rotation.z=slope;
 for(let i=0;i<18;i++){const t=i/17,b=box(conveyor,[ca[0]+(cb[0]-ca[0])*t,ca[1]+(cb[1]-ca[1])*t+.065,0],[.05,.09,.82],'green');b.rotation.z=slope;}
-for(const x of [1.25,4.5]){const y=ca[1]+(x-ca[0])*Math.tan(slope);for(const z of [-.35,.35])bar(conveyor,[x,.04,z],[x,y-.05,z],.055,'dark');}
+for(const x of [ca[0]+.05,.5,4.5]){const y=ca[1]+(x-ca[0])*Math.tan(slope);for(const z of [-.35,.35])bar(conveyor,[x,.04,z],[x,y-.05,z],.055,'dark');}
 hopper(conveyor,[4.95,2.98,0],[5.08,2.79,0],[.7,.85],[.5,.6]);
 const motor=part('conveyor-motor','输送机头部驱动滚筒',2,'安装于输送机头部，为输送带提供驱动。此件为输送驱动，后处理风机另安装于后处理装置顶部。',[4.85,2.83,.55],[1.5,0,4.1],'输送驱动形式示意 · 与后处理顶部风机区分');cyl(motor,[4.85,2.85,0],.14,1,'steel',[Math.PI/2,0,0]);box(motor,[4.85,2.83,.62],[.28,.28,.27],'dark');
 const post=part('post','颗粒后处理装置',3,'对发泡颗粒进行后处理，衔接熟化稳定及干燥等后续环节；具体功能配置需确认。',[6,1.7,0],[3,0,0],'宣传页第3页 · 后处理装置');box(post,[6,1.65,0],[2.7,2,2],'steel');box(post,[6,2.73,0],[2.9,.15,2.15],'dark');for(const x of [4.85,7.15])for(const z of [-.8,.8])bar(post,[x,0,z],[x,.7,z],.055,'dark');for(const x of [5.3,6.6])cyl(post,[x,1.65,1.03],.33,.06,'dark',[Math.PI/2,0,0]);
@@ -77,10 +91,10 @@ const pack=part('pack','出料与收集示意',4,'收集筛分后的颗粒，进
 const flowRoutes=releaseRoutes.map((route,k)=>routedCurve([
  feedSource,feedJunction,[feedPorts[k][0],9.65,.35],feedPorts[k],
  [k?-2.95:-5.1,7.8,0],...route,
- [.5,3,0],[.5,.82,0],[.5,.405,0],[.5,.30,0],[.5,.24,0],[1.2,.24,0],
+ [collectorX,3,0],[collectorX,.82,0],[collectorX,.405,0],[collectorX,.30,0],[collectorX,.24,0],[ca[0],.24,0],
  [4.9,3.03,0],[5.08,2.79,0],[6,2.1,0],[7.2,2.3,0],[8.1,2.2,0],[9,1.62,0],[9,1.51,0],[9,1.25,0],[10.6,1.1,0],[10.6,.6,0]
 ],.10));
-const connections={revision:'0.2',basis:'用户逐项确认的五处连接修正；尺寸与内部细节仍为示意',feedSource,feedPorts,releaseRoutes,collectorRoof,collectorOutlet:[.5,.405,0],conveyorCatch:{upper:catchUpper,lower:catchLower,belt:[.5,.18,0]},blower:{baseBottom:2.805,postRoof:2.805,center:[6.6,3.28,.2]},screenTransfer:{type:'open-hopper',upper:[8.1,2.3,0],outlet:[9,1.51,0],screenTop:1.5},vesselAssembledLift:1};
-model.userData={revision:'0.2',connections};
+const connections={revision:'0.3',basis:'在压力诱导V0.2上按用户新确认：收集罐位于高压釜下方，上端接消音器；尺寸与内部细节仍为示意',feedSource,feedPorts,releaseRoutes,collectorRoof,collectorCenter:[collectorX,2.7,0],collectorRoofTop:3.58,ventPort,ventRoute,mufflerInlet,collectorOutlet:[collectorX,.405,0],conveyorCatch:{upper:catchUpper,lower:catchLower,belt:[collectorX,.18,0]},blower:{baseBottom:2.805,postRoof:2.805,center:[6.6,3.28,.2]},screenTransfer:{type:'open-hopper',upper:[8.1,2.3,0],outlet:[9,1.51,0],screenTop:1.5},vesselAssembledLift:1};
+model.userData={revision:'0.3',connections};
 return {model,parts,systems,shells,flowRoutes,connections};
 }
